@@ -44,8 +44,15 @@ class Segmentation:
         SO.segment_list[0].y2 = SO.size * self.HIGH_P_MEM
         self.paint_in_p_memory(SO)
         self.take_p_memory(0, SO.size)
-        self.take_p_memory(32, 64)
-        self.take_p_memory(102, 104)
+        self.take_p_memory(31, 48)
+        self.take_p_memory(96, 106)
+        self.calculate_free_blocks()
+        self.calculate_free_blocks()
+        # TMP
+        print(self.addres_space)
+        for block in self.free_block_p_mem:
+            print(block.start, block.end, block.size)
+        print("block size:", len(self.free_block_p_mem))
 
         # Memoria Virtual
         self.v_memory = Canvas(self.window, width=600, height=250)
@@ -154,9 +161,8 @@ class Segmentation:
             if add_block:
                 start_bool = False
                 add_block = False
-                self.free_block_p_mem.append(Block(start, end))
+                self.free_block_p_mem.append(Block(start, end + 1))
                 continue
 
         if self.addres_space[self.SIZE_P_MEM - 1] == 0 and start_bool:
-            self.free_block_p_mem.append(Block(start, self.SIZE_P_MEM - 1))
-            print("ize block", len(self.free_block_p_mem))
+            self.free_block_p_mem.append(Block(start, self.SIZE_P_MEM))

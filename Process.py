@@ -29,4 +29,4 @@ class Block:
     def __init__(self, start, end):
         self.start = start
         self.end = end
-        self.size = self.end + 1 - self.start
+        self.size = self.end - self.start
