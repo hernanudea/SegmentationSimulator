@@ -1,6 +1,6 @@
 from tkinter import ttk
 from tkinter import *
-from Process import Process
+from Process import Process, Block
 
 
 class Segmentation:
@@ -9,12 +9,14 @@ class Segmentation:
         x_init, y_init, x_end, y_end = 0, 0, 300, 450
         self.COLORS = ['yellow', 'blue', 'red', 'royal blue', 'pink', 'blue violet', 'thistle', 'orange', 'white smoke',
                        'bisque2', 'cyan', 'saddle brown', 'sandy brown', 'LightYellow4']
-        self.index_color = 0
+        self.index_color = -1
         self.WIDTH_V_MEM = 70
+        self.SIZE_P_MEM = 128
         self.HIGH_P_MEM = 4
 
         self.addres_space = []
-        for i in range(127):
+        self.free_block_p_mem = []
+        for i in range(self.SIZE_P_MEM):
             self.addres_space.append(0)
 
         self.process_list = []
@@ -35,12 +37,15 @@ class Segmentation:
         # Paint SO in physical memory
         SO = Process('gray60', 'SO')
         SO.size = 16
-        SO.segment_list[0].size = 16
+        SO.segment_list[0].size = SO.size
         SO.segment_list[0].x1 = 0
         SO.segment_list[0].y1 = 0
         SO.segment_list[0].x2 = 300
         SO.segment_list[0].y2 = SO.size * self.HIGH_P_MEM
         self.paint_in_p_memory(SO)
+        self.take_p_memory(0, SO.size)
+        self.take_p_memory(32, 64)
+        self.take_p_memory(102, 104)
 
         # Memoria Virtual
         self.v_memory = Canvas(self.window, width=600, height=250)
@@ -86,16 +91,16 @@ class Segmentation:
         p = Process(color, 'P')
 
         p = self.calculate_in_v_memory(p)
-        # p = self.calculate_in_p_memory(p)
-        self.process_list.append(p)
+        p = self.calculate_in_p_memory(p)
+        # self.process_list.append(p)
 
     def calculate_in_v_memory(self, p):
         p.x1 = self.v_mem_x1
         p.y1 = self.v_mem_y1
         p.x2 = self.v_mem_x2
         p.y2 = self.v_mem_y2
-        p.pid = self.v_memory.create_rectangle(p.x1, p.y1, p.x2, p.y2, fill=p.color)
-        Label(self.v_memory, text='P' + str(p.pid), fg='white', bg='black').place(x=p.x1, y=p.y1)
+        p.pid_v_mem = self.v_memory.create_rectangle(p.x1, p.y1, p.x2, p.y2, fill=p.color)
+        Label(self.v_memory, text='P' + str(p.pid_v_mem), fg='white', bg='black').place(x=p.x1, y=p.y1)
         self.v_mem_x1 += self.WIDTH_V_MEM
         self.v_mem_x2 += self.WIDTH_V_MEM
         return p
@@ -120,7 +125,7 @@ class Segmentation:
     def paint_in_p_memory(self, p):
         for segment in p.segment_list:
             self.r2 = self.p_memory.create_rectangle(segment.x1, segment.y1, segment.x2, segment.y2, fill=p.color)
-            Label(self.p_memory, text=segment.name + ' - ' + str(segment.size) + 'KB', fg='white', bg='black')\
+            Label(self.p_memory, text=segment.name + ' - ' + str(segment.size) + 'KB', fg='white', bg='black') \
                 .place(x=segment.x1, y=segment.y1)
 
     def paint_in_v_memory(self):
@@ -128,3 +133,30 @@ class Segmentation:
 
     def best_fit(self):
         pass
+
+    def take_p_memory(self, start, end, free=1):
+        for i in range(start, end):
+            self.addres_space[i] = free
+
+    def calculate_free_blocks(self):
+        self.free_block_p_mem.clear()
+        start_bool = False
+        add_block = False
+        for i in range(self.SIZE_P_MEM):
+            if start_bool:
+                if self.addres_space[i] == 1:
+                    end = i - 1
+                    add_block = True
+            else:
+                if self.addres_space[i] == 0:
+                    start = i
+                    start_bool = True
+            if add_block:
+                start_bool = False
+                add_block = False
+                self.free_block_p_mem.append(Block(start, end))
+                continue
+
+        if self.addres_space[self.SIZE_P_MEM - 1] == 0 and start_bool:
+            self.free_block_p_mem.append(Block(start, self.SIZE_P_MEM - 1))
+            print("ize block", len(self.free_block_p_mem))
