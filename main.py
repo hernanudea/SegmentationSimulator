@@ -11,6 +11,7 @@ if __name__ == '__main__':
 
 add_process
     calculate_in_v_memory
+	    
 	    paint_in_v_memory
 
 	calculate_in_v_memory
