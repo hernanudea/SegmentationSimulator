@@ -86,6 +86,9 @@ class Segmentation:
     def calculate_in_p_memory(self, p):
         for i in range(len(p.segment_list)):
             block = self.best_fit(p.segment_list[i])
+            if block == None:
+                print("No hay memoria suficiente para crear el proceso")
+                return
             p.segment_list[i].x2 = self.WIDTH_P_MEM
             p.segment_list[i].y1 = block.start * self.HIGH_P_MEM
             p.segment_list[i].y2 = p.segment_list[i].y1 + (p.segment_list[i].size * self.HIGH_P_MEM)
@@ -117,8 +120,11 @@ class Segmentation:
         block_to_return = self.free_block_p_mem[0]
         pass_menor = self.SIZE_P_MEM
         for block in self.free_block_p_mem:
-            if segment.size >= block.size and block.size < pass_menor:
+            if block.size >= segment.size and block.size < pass_menor:
                 block_to_return = block
+                pass_menor = block.size
+        if block_to_return.size < segment.size:
+            return None
         return block_to_return
 
     def take_p_memory(self, start, end, free=1):
