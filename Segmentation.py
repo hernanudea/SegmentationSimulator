@@ -2,20 +2,22 @@ from tkinter import ttk
 from tkinter import *
 from Process import Process, Block
 
+
 class Segmentation:
 
     def __init__(self, window):
         x_init, y_init, x_end, y_end = 0, 0, 300, 450
         self.COLORS = ['royal blue', 'pink', 'blue violet', 'orange', 'white smoke', 'blue', 'bisque2',
                        'cyan', 'saddle brown', 'thistle', 'yellow', 'sandy brown', 'LightYellow4', 'red']
-        self.index_color = -1
-        self.WIDTH_V_MEM = 70
-        self.WIDTH_P_MEM = 300
         self.SIZE_P_MEM = 128
         self.SIZE_SO_MEM = 16
+        self.WIDTH_V_MEM = 70
+        self.WIDTH_P_MEM = 300
         self.HIGH_P_MEM = 4
+        self.index_color = -1
         self.free_block_p_mem = []
         self.process_list = []
+        self.free_memory = True
         self.address_space = list(range(self.SIZE_P_MEM))
         self.take_p_memory(0, self.SIZE_P_MEM, 0)
         self.v_mem_x1 = 10
@@ -25,7 +27,7 @@ class Segmentation:
 
         self.window = window
         self.window.geometry("980x562")
-        self.window.resizable(False, False)
+        # self.window.resizable(False, False)
         self.window.title("Simulador de Segmentación de Memoria")
 
         # Memoria Fisica
@@ -37,6 +39,10 @@ class Segmentation:
         # Creating a Frame Container add process
         frame_add_process = LabelFrame(self.window, text='Agregar Proceso')
         frame_add_process.place(x=25, y=300)
+
+        self.show_message()
+        self.show_message("Para crear un nuevo proceso, especifique el tamaño en KB y presione 'Crear Proceso'")
+
         # Virtual Memory Input
         self.label_new_process = Label(frame_add_process, text='Memoria (KB): ').grid(row=1, column=0)
         self.imput_memory_new_process = Entry(frame_add_process)
@@ -61,15 +67,20 @@ class Segmentation:
         try:
             memory_new_process = int(self.imput_memory_new_process.get())
         except ValueError:
-            print("That's not an int!")
+            self.show_message('No es un numero valido')
             return
 
+        self.free_memory = True
         color = self.get_color()
         p = Process(color, 'P', memory_new_process)
 
-        p = self.calculate_in_v_memory(p)
         p = self.calculate_in_p_memory(p)
-        self.process_list.append(p)
+        if self.free_memory:
+            p = self.calculate_in_v_memory(p)
+            self.show_message("Proceso creado correctamente con Pid={}.".format(p.pid_v_mem))
+            self.process_list.append(p)
+        else:
+            return
 
     def calculate_in_v_memory(self, p):
         p.x1 = self.v_mem_x1
@@ -86,8 +97,9 @@ class Segmentation:
     def calculate_in_p_memory(self, p):
         for i in range(len(p.segment_list)):
             block = self.best_fit(p.segment_list[i])
-            if block == None:
-                print("No hay memoria suficiente para crear el proceso")
+            if block is None:
+                self.show_message("No hay memoria suficiente para crear el proceso")
+                self.free_memory = False
                 return
             p.segment_list[i].x2 = self.WIDTH_P_MEM
             p.segment_list[i].y1 = block.start * self.HIGH_P_MEM
@@ -117,7 +129,7 @@ class Segmentation:
 
     def best_fit(self, segment):
         self.calculate_free_blocks()
-        block_to_return = self.free_block_p_mem[0]
+        block_to_return = Block(0, 0)
         pass_menor = self.SIZE_P_MEM
         for block in self.free_block_p_mem:
             if block.size >= segment.size and block.size < pass_menor:
@@ -156,10 +168,12 @@ class Segmentation:
     def paint_canvas_v_virtual(self):
         self.v_memory = Canvas(self.window, width=600, height=250, bg="white")
         self.v_memory.place(x=25, y=25)
+        Label(self.window, text='Memorias Vituales: ').place(x=290, y=5)
 
     def paint_canvas_p_virtual(self):
         self.p_memory = Canvas(self.window, width=300, height=512, bg="green")
         self.p_memory.place(x=655, y=25)
+        Label(self.window, text='Memoria Física: ').place(x=760, y=5)
 
         # Paint SO in physical memory
         SO = Process('gray60', 'SO', self.SIZE_SO_MEM)
@@ -174,10 +188,8 @@ class Segmentation:
     def del_process(self):
         try:
             id_del_process = int(self.input_id_del_process.get())
-            if id_del_process > len(self.process_list):
-                print("It's not a valid number")
         except ValueError:
-            print("That's not an int!")
+            self.show_message('No es un numero valido')
             return
 
         index_v_mem = -1
@@ -190,9 +202,15 @@ class Segmentation:
                 for segment in self.process_list[i].segment_list:
                     index_p_mem.append(segment)
                 continue
-        self.process_list.__delitem__(index_list)
+        if index_list == -1:
+            self.show_message("El proceso con Pid = {} no existe.".format(id_del_process))
+            return
+
+        del self.process_list[index_list:index_list + 1]
         self.del_process_v_memory(index_v_mem)
         self.del_process_p_memory(index_p_mem)
+        self.input_id_del_process['text'] = ''
+        self.show_message("El proceso con Pid = {} ha sido borrado.".format(id_del_process))
 
     def del_process_v_memory(self, index):
         self.v_memory.delete(index)
@@ -206,3 +224,12 @@ class Segmentation:
     def paint_all_p_memory(self):
         for process in self.process_list:
             self.paint_in_p_memory(process)
+
+    def show_message(self, message=''):
+        frame_message = LabelFrame(self.window, text='Mensajes')
+        frame_message.place(x=25, y=500)
+        if message == '':
+            self.message = Label(frame_message, text="", font="20")  # fg='red'
+            self.message.grid(row=0, column=0, columnspan=2, sticky=W + E)
+        else:
+            self.message['text'] = message
