@@ -2,7 +2,6 @@ from tkinter import ttk
 from tkinter import *
 from Process import Process, Block
 
-
 class Segmentation:
 
     def __init__(self, window):
@@ -15,13 +14,10 @@ class Segmentation:
         self.SIZE_P_MEM = 128
         self.SIZE_SO_MEM = 16
         self.HIGH_P_MEM = 4
-
-        self.address_space = []
         self.free_block_p_mem = []
-        for i in range(self.SIZE_P_MEM):
-            self.address_space.append(0)
-
         self.process_list = []
+        self.address_space = list(range(self.SIZE_P_MEM))
+        self.take_p_memory(0, self.SIZE_P_MEM, 0)
         self.v_mem_x1 = 10
         self.v_mem_y1 = 20
         self.v_mem_x2 = 70
@@ -33,22 +29,10 @@ class Segmentation:
         self.window.title("Simulador de Segmentación de Memoria")
 
         # Memoria Fisica
-        self.p_memory = Canvas(self.window, width=300, height=512, bg="green")
-        self.p_memory.place(x=655, y=25)
+        self.paint_canvas_p_virtual()
 
         # Memoria Virtual
-        self.v_memory = Canvas(self.window, width=600, height=250, bg="white")
-        self.v_memory.place(x=25, y=25)
-
-        # Paint SO in physical memory
-        SO = Process('gray60', 'SO', self.SIZE_SO_MEM)
-        SO.segment_list[0].size = SO.size
-        SO.segment_list[0].x1 = 0
-        SO.segment_list[0].y1 = 0
-        SO.segment_list[0].x2 = self.WIDTH_P_MEM
-        SO.segment_list[0].y2 = SO.size * self.HIGH_P_MEM
-        self.paint_in_p_memory(SO)
-        self.take_p_memory(0, SO.size)
+        self.paint_canvas_v_virtual()
 
         # Creating a Frame Container add process
         frame_add_process = LabelFrame(self.window, text='Agregar Proceso')
@@ -67,8 +51,8 @@ class Segmentation:
         frame_del_process.place(x=300, y=300)
         # Name Input
         Label(frame_del_process, text='Id proceso: ').grid(row=1, column=0)
-        self.memory_del_process = Entry(frame_del_process)
-        self.memory_del_process.grid(row=1, column=1)
+        self.input_id_del_process = Entry(frame_del_process)
+        self.input_id_del_process.grid(row=1, column=1)
         # Button Add Product
         ttk.Button(frame_del_process, text='Terminar Proceso', command=self.del_process).grid(row=3, columnspan=2,
                                                                                               sticky=W + E)
@@ -76,7 +60,6 @@ class Segmentation:
     def add_process(self):
         try:
             memory_new_process = int(self.imput_memory_new_process.get())
-            print(memory_new_process)
         except ValueError:
             print("That's not an int!")
             return
@@ -94,7 +77,8 @@ class Segmentation:
         p.x2 = self.v_mem_x2
         p.y2 = self.v_mem_y2
         p.pid_v_mem = self.v_memory.create_rectangle(p.x1, p.y1, p.x2, p.y2, fill=p.color)
-        Label(self.v_memory, text='P' + str(p.pid_v_mem), fg='white', bg='black').place(x=p.x1, y=p.y1)
+        Label(self.v_memory, text='P-' + str(p.pid_v_mem) + ', ' + str(p.size) + 'KB', fg='white', bg='black') \
+            .place(x=p.x1, y=p.y1)
         self.v_mem_x1 += self.WIDTH_V_MEM
         self.v_mem_x2 += self.WIDTH_V_MEM
         return p
@@ -163,5 +147,56 @@ class Segmentation:
         if self.address_space[self.SIZE_P_MEM - 1] == 0 and start_bool:
             self.free_block_p_mem.append(Block(start, self.SIZE_P_MEM))
 
-    def del_process(self, id):
-        pass
+    def paint_canvas_v_virtual(self):
+        self.v_memory = Canvas(self.window, width=600, height=250, bg="white")
+        self.v_memory.place(x=25, y=25)
+
+    def paint_canvas_p_virtual(self):
+        self.p_memory = Canvas(self.window, width=300, height=512, bg="green")
+        self.p_memory.place(x=655, y=25)
+
+        # Paint SO in physical memory
+        SO = Process('gray60', 'SO', self.SIZE_SO_MEM)
+        SO.segment_list[0].size = SO.size
+        SO.segment_list[0].x1 = 0
+        SO.segment_list[0].y1 = 0
+        SO.segment_list[0].x2 = self.WIDTH_P_MEM
+        SO.segment_list[0].y2 = SO.size * self.HIGH_P_MEM
+        self.paint_in_p_memory(SO)
+        self.take_p_memory(0, SO.size)
+
+    def del_process(self):
+        try:
+            id_del_process = int(self.input_id_del_process.get())
+            if id_del_process > len(self.process_list):
+                print("It's not a valid number")
+        except ValueError:
+            print("That's not an int!")
+            return
+
+        index_v_mem = -1
+        index_p_mem = []
+        index_list = -1
+        for i in range(len(self.process_list)):
+            if id_del_process == self.process_list[i].pid_v_mem:
+                index_v_mem = self.process_list[i].pid_v_mem
+                index_list = i
+                for segment in self.process_list[i].segment_list:
+                    index_p_mem.append(segment)
+                continue
+        self.process_list.__delitem__(index_list)
+        self.del_process_v_memory(index_v_mem)
+        self.del_process_p_memory(index_p_mem)
+
+    def del_process_v_memory(self, index):
+        self.v_memory.delete(index)
+
+    def del_process_p_memory(self, segments):
+        self.paint_canvas_p_virtual()
+        for segment in segments:
+            self.take_p_memory(segment.y1 // self.HIGH_P_MEM, segment.y2 // self.HIGH_P_MEM, 0)
+        self.paint_all_p_memory()
+
+    def paint_all_p_memory(self):
+        for process in self.process_list:
+            self.paint_in_p_memory(process)

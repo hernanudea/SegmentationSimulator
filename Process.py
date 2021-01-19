@@ -3,6 +3,7 @@ class Process:
     def __init__(self, color, type_process, size):
         self.NUMBER_BLOCK = 3
         self.pid_v_mem = None
+        self.index = None
         self.color = color
         self.size = size
         self.segment_list = []
