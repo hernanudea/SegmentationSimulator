@@ -7,7 +7,7 @@ class Segmentation:
 
     def __init__(self, window):
         x_init, y_init, x_end, y_end = 0, 0, 300, 450
-        self.COLORS = ['royal blue', 'pink', 'blue violet', 'orange', 'white smoke', 'blue', 'bisque2',
+        self.COLORS = ['royal blue', 'blue violet', 'orange', 'blue',
                        'cyan', 'saddle brown', 'thistle', 'yellow', 'sandy brown', 'LightYellow4', 'red']
         self.SIZE_P_MEM = 128
         self.SIZE_SO_MEM = 16
@@ -27,7 +27,7 @@ class Segmentation:
 
         self.window = window
         self.window.geometry("980x562")
-        # self.window.resizable(False, False)
+        self.window.resizable(False, False)
         self.window.title("Simulador de Segmentación de Memoria")
 
         # Memoria Fisica
@@ -69,7 +69,7 @@ class Segmentation:
         except ValueError:
             self.show_message('No es un numero valido')
             return
-
+        self.imput_memory_new_process.delete(0, 'end')
         self.free_memory = True
         color = self.get_color()
         p = Process(color, 'P', memory_new_process)
@@ -79,6 +79,7 @@ class Segmentation:
             p = self.calculate_in_v_memory(p)
             self.show_message("Proceso creado correctamente con Pid={}.".format(p.pid_v_mem))
             self.process_list.append(p)
+            self.show_register_values(p)
         else:
             return
 
@@ -121,11 +122,7 @@ class Segmentation:
                                                                          p.segment_list[i].x2, p.segment_list[i].y2,
                                                                          fill=p.color)
             Label(self.p_memory, text=p.segment_list[i].name + ', ' + str(p.segment_list[i].size) + 'KB', fg='white',
-                  bg='black') \
-                .place(x=p.segment_list[i].x1, y=p.segment_list[i].y1)
-
-    def paint_in_v_memory(self):
-        pass
+                  bg='black').place(x=p.segment_list[i].x1, y=p.segment_list[i].y1)
 
     def best_fit(self, segment):
         self.calculate_free_blocks()
@@ -192,6 +189,7 @@ class Segmentation:
             self.show_message('No es un numero valido')
             return
 
+        self.input_id_del_process.delete(0, 'end')
         index_v_mem = -1
         index_p_mem = []
         index_list = -1
@@ -226,10 +224,20 @@ class Segmentation:
             self.paint_in_p_memory(process)
 
     def show_message(self, message=''):
-        frame_message = LabelFrame(self.window, text='Mensajes')
-        frame_message.place(x=25, y=500)
         if message == '':
+            frame_message = LabelFrame(self.window, text='Mensajes')
+            frame_message.place(x=25, y=500)
             self.message = Label(frame_message, text="", font="20")  # fg='red'
             self.message.grid(row=0, column=0, columnspan=2, sticky=W + E)
         else:
             self.message['text'] = message
+
+    def show_register_values(self, p):
+        register_values = "Segment Register Values\n"
+        register_values += f"Pid = {p.pid_v_mem}\n"
+        register_values += "----------------------\n"
+        register_values += f"Segment\tBase\tSize\tGP\n"
+        for i, segment in enumerate(p.segment_list):
+            register_values += f"{segment.name}\t{segment.y1 // self.HIGH_P_MEM}\t{segment.size}\t{1 if i < 2 else 0}\n"
+
+        Label(self.window, text=register_values, font="20", bg=p.color, fg='black').place(x=250, y=167)
